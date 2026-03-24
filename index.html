@@ -2,8 +2,6 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8" />
-
-  <!-- 📱 مهم للجوال -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <title>استعادة كلمة المرور - دكان الحارة</title>
@@ -105,7 +103,6 @@
       color: #555;
       margin-top: 10px;
     }
-
   </style>
 </head>
 
@@ -113,7 +110,6 @@
 
   <div class="container">
 
-    <!-- 🛒 شعار التطبيق -->
     <img src="logo.png" alt="دكان الحارة" />
 
     <h2>🔐 استعادة كلمة المرور</h2>
@@ -133,7 +129,6 @@
     <p id="loading" class="loading"></p>
     <p id="message" class="message"></p>
 
-    <!-- ⚠️ ملاحظة أمنية -->
     <div class="notice">
       ⚠️ في حال لم تقم بطلب تغيير كلمة المرور، يرجى تجاهل هذه الرسالة
       أو التواصل مع إدارة التطبيق.
@@ -146,6 +141,28 @@
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtjeHpzbnJxZHpnZmtidnNoc2d1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNjQwNTMsImV4cCI6MjA4ODg0MDA1M30.dx61LP2sYI2HfxClklfKYv9sJ1TYVzpJYyQ2PJSA-Gw";
 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // 🔥 استخراج التوكن من الرابط (الحل الأساسي للمشكلة)
+    async function handleSession() {
+      const hash = window.location.hash;
+
+      if (hash && hash.includes("access_token")) {
+        const params = new URLSearchParams(hash.substring(1));
+
+        const access_token = params.get("access_token");
+        const refresh_token = params.get("refresh_token");
+
+        if (access_token && refresh_token) {
+          await supabaseClient.auth.setSession({
+            access_token,
+            refresh_token,
+          });
+        }
+      }
+    }
+
+    // تشغيل عند فتح الصفحة
+    handleSession();
 
     function validatePassword(password) {
       const regex = /^(?=.*[A-Z])(?=.*[0-9]).{6,}$/;
@@ -162,7 +179,6 @@
       message.innerText = "";
       message.className = "message";
 
-      // ✅ تحقق
       if (!validatePassword(password)) {
         message.innerText = "❌ كلمة المرور يجب أن تحتوي على 6 أحرف + حرف كبير + رقم";
         message.classList.add("error");
@@ -189,10 +205,9 @@
         message.innerText = "✅ تم تغيير كلمة المرور بنجاح";
         message.classList.add("success");
 
-        // 🔐 تسجيل خروج
         await supabaseClient.auth.signOut();
 
-        // 🔥 تحويل للتطبيق (اختياري)
+        // 🔥 الرجوع للتطبيق
         setTimeout(() => {
           window.location.href = "haymarket://reset-password";
         }, 2000);
