@@ -111,26 +111,24 @@
 
   const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  let sessionReady = false;
-  let exchanged = false;
+  let resetCode = null;
 
-  async function init() {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const code = params.get("code");
+  // 🔥 حفظ الكود قبل ما يضيع
+  if (window.location.search.includes("code=")) {
+    sessionStorage.setItem("reset_code", window.location.search);
+    window.location.href = window.location.pathname;
+  }
 
-      if (!code) {
-        console.log("No code");
-        return;
-      }
+  // 🔥 استرجاع الكود
+  function init() {
+    const stored = sessionStorage.getItem("reset_code");
 
-      console.log("Code found:", code);
-
-      // 🔥 نؤجل التحويل (لا ننفذه هنا)
-      window.resetCode = code;
-
-    } catch (e) {
-      console.error(e);
+    if (stored) {
+      const params = new URLSearchParams(stored);
+      resetCode = params.get("code");
+      console.log("Code restored:", resetCode);
+    } else {
+      console.log("No reset code found");
     }
   }
 
@@ -152,7 +150,7 @@
       btn.disabled = true;
       btn.innerText = "⏳ جاري التنفيذ...";
 
-      if (!window.resetCode) {
+      if (!resetCode) {
         msg.innerText = "❌ الرابط غير صالح";
         msg.className = "message error";
         btn.disabled = false;
@@ -160,22 +158,17 @@
         return;
       }
 
-      // 🔥 مهم جدًا: لا تنفذ إلا مرة واحدة
-      if (!exchanged) {
-        const { error } = await supabaseClient.auth.exchangeCodeForSession({
-          code: window.resetCode
-        });
+      // 🔥 تحويل الكود إلى session
+      const { error } = await supabaseClient.auth.exchangeCodeForSession({
+        code: resetCode
+      });
 
-        if (error) {
-          msg.innerText = "❌ الرابط منتهي أو تم استخدامه";
-          msg.className = "message error";
-          btn.disabled = false;
-          btn.innerText = "تغيير كلمة المرور";
-          return;
-        }
-
-        exchanged = true;
-        sessionReady = true;
+      if (error) {
+        msg.innerText = "❌ الرابط منتهي أو تم استخدامه";
+        msg.className = "message error";
+        btn.disabled = false;
+        btn.innerText = "تغيير كلمة المرور";
+        return;
       }
 
       if (!validatePassword(password)) {
@@ -194,6 +187,7 @@
         return;
       }
 
+      // 🔐 تحديث كلمة المرور
       const { error: updateError } = await supabaseClient.auth.updateUser({
         password: password
       });
@@ -203,12 +197,20 @@
       msg.innerText = "✅ تم تغيير كلمة المرور بنجاح";
       msg.className = "message success";
 
+      sessionStorage.removeItem("reset_code");
+
+      await supabaseClient.auth.signOut();
+
+      setTimeout(() => {
+        window.location.href = "haymarket://reset-password";
+      }, 2000);
+
     } catch (e) {
+      console.error(e);
       msg.innerText = "❌ حدث خطأ";
       msg.className = "message error";
       btn.disabled = false;
       btn.innerText = "تغيير كلمة المرور";
-      console.error(e);
     }
   }
 
