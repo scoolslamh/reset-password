@@ -137,13 +137,23 @@
   </div>
 
   <script>
-    const SUPABASE_URL = "kcxzsnrqdzgfkbvshsgu";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtjeHpzbnJxZHpnZmtidnNoc2d1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNjQwNTMsImV4cCI6MjA4ODg0MDA1M30.dx61LP2sYI2HfxClklfKYv9sJ1TYVzpJYyQ2PJSA-Gw";
+    const SUPABASE_URL = "YOUR_URL";
+    const SUPABASE_KEY = "YOUR_ANON_KEY";
 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // 🔥 استخراج التوكن من الرابط (الحل الأساسي للمشكلة)
-    async function handleSession() {
+    let sessionReady = false;
+
+    // 🔥 الطريقة الأساسية
+    supabaseClient.auth.onAuthStateChange(async (event, session) => {
+      if (event === "PASSWORD_RECOVERY") {
+        sessionReady = true;
+        console.log("Session Ready via event ✅");
+      }
+    });
+
+    // 🔥 fallback مهم جدًا
+    async function handleSessionFallback() {
       const hash = window.location.hash;
 
       if (hash && hash.includes("access_token")) {
@@ -157,12 +167,14 @@
             access_token,
             refresh_token,
           });
+
+          sessionReady = true;
+          console.log("Session Ready via fallback ✅");
         }
       }
     }
 
-    // تشغيل عند فتح الصفحة
-    handleSession();
+    handleSessionFallback();
 
     function validatePassword(password) {
       const regex = /^(?=.*[A-Z])(?=.*[0-9]).{6,}$/;
@@ -178,6 +190,12 @@
 
       message.innerText = "";
       message.className = "message";
+
+      if (!sessionReady) {
+        message.innerText = "❌ الرابط غير صالح أو انتهت صلاحيته";
+        message.classList.add("error");
+        return;
+      }
 
       if (!validatePassword(password)) {
         message.innerText = "❌ كلمة المرور يجب أن تحتوي على 6 أحرف + حرف كبير + رقم";
@@ -207,17 +225,17 @@
 
         await supabaseClient.auth.signOut();
 
-        // 🔥 الرجوع للتطبيق
+        // 🔥 تحويل للتطبيق (اختياري)
         setTimeout(() => {
           window.location.href = "haymarket://reset-password";
         }, 2000);
 
       } catch (err) {
         loading.innerText = "";
-        message.innerText = "❌ حدث خطأ، حاول مرة أخرى";
+        message.innerText = err.message || "❌ حدث خطأ";
         message.classList.add("error");
-        console.error(err);
         btn.disabled = false;
+        console.error(err);
       }
     }
   </script>
