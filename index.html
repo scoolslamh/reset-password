@@ -111,7 +111,10 @@
 
   const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  let codeUsed = false;
+  // 🔥 استخراج الكود فقط (بدون استهلاكه)
+  let resetCode = null;
+  const params = new URLSearchParams(window.location.search);
+  resetCode = params.get("code");
 
   function validatePassword(password) {
     return /^(?=.*[A-Z])(?=.*[0-9]).{6,}$/.test(password);
@@ -129,8 +132,8 @@
       btn.disabled = true;
       btn.innerText = "⏳ جاري التنفيذ...";
 
-      // ✅ تحقق من وجود code في الرابط
-      if (!window.location.href.includes("code=")) {
+      // ✅ تحقق من وجود الكود
+      if (!resetCode) {
         msg.innerText = "❌ الرابط غير صالح";
         msg.className = "message error";
         btn.disabled = false;
@@ -138,23 +141,20 @@
         return;
       }
 
-      // 🔥 استخدام الكود مرة واحدة فقط
-      if (!codeUsed) {
-        const { error } = await supabaseClient.auth.exchangeCodeForSession(
-          window.location.href
-        );
+      // 🔥 تحويل الكود إلى session (مرة واحدة فقط)
+      const { error } = await supabaseClient.auth.exchangeCodeForSession({
+        code: resetCode
+      });
 
-        if (error) {
-          msg.innerText = "❌ الرابط منتهي أو تم استخدامه";
-          msg.className = "message error";
-          btn.disabled = false;
-          btn.innerText = "تغيير كلمة المرور";
-          return;
-        }
-
-        codeUsed = true;
+      if (error) {
+        msg.innerText = "❌ الرابط منتهي أو تم استخدامه";
+        msg.className = "message error";
+        btn.disabled = false;
+        btn.innerText = "تغيير كلمة المرور";
+        return;
       }
 
+      // 🔐 تحقق كلمة المرور
       if (!validatePassword(password)) {
         msg.innerText = "❌ كلمة المرور ضعيفة";
         msg.className = "message error";
@@ -171,6 +171,7 @@
         return;
       }
 
+      // 🔥 تحديث كلمة المرور
       const { error: updateError } = await supabaseClient.auth.updateUser({
         password: password
       });
@@ -182,7 +183,7 @@
 
       await supabaseClient.auth.signOut();
 
-      // 🔥 رجوع للتطبيق (اختياري)
+      // 🚀 رجوع للتطبيق (اختياري)
       setTimeout(() => {
         window.location.href = "haymarket://reset-password";
       }, 2000);
