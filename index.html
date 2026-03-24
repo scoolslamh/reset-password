@@ -6,7 +6,8 @@
 
   <title>استعادة كلمة المرور - دكان الحارة</title>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <!-- ✅ تحميل صحيح -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
   <style>
     body {
@@ -57,188 +58,128 @@
       cursor: pointer;
     }
 
-    button:hover {
-      background: #256628;
-    }
-
-    button:disabled {
-      background: #9e9e9e;
-      cursor: not-allowed;
-    }
-
     .message {
       margin-top: 15px;
       font-size: 14px;
     }
 
-    .error {
-      color: red;
-    }
-
-    .success {
-      color: green;
-    }
+    .error { color: red; }
+    .success { color: green; }
 
     .rules {
       font-size: 13px;
-      color: #666;
       text-align: right;
-      margin: 10px 0;
-      line-height: 1.6;
     }
 
     .notice {
       margin-top: 15px;
       font-size: 13px;
-      color: #555;
       background: #fff8e1;
       padding: 10px;
       border-radius: 8px;
-      border: 1px solid #ffe082;
-      line-height: 1.6;
-    }
-
-    .loading {
-      font-size: 14px;
-      color: #555;
-      margin-top: 10px;
     }
   </style>
 </head>
 
 <body>
 
-  <div class="container">
+<div class="container">
 
-    <img src="logo.png" alt="دكان الحارة" />
+  <img src="logo.png" />
 
-    <h2>🔐 استعادة كلمة المرور</h2>
+  <h2>🔐 استعادة كلمة المرور</h2>
 
-    <input type="password" id="password" placeholder="كلمة المرور الجديدة" />
-    <input type="password" id="confirmPassword" placeholder="تأكيد كلمة المرور" />
+  <input type="password" id="password" placeholder="كلمة المرور الجديدة" />
+  <input type="password" id="confirmPassword" placeholder="تأكيد كلمة المرور" />
 
-    <div class="rules">
-      يجب أن تحتوي كلمة المرور على:<br>
-      ✔ 6 أحرف على الأقل<br>
-      ✔ حرف كبير (A-Z)<br>
-      ✔ رقم (0-9)
-    </div>
-
-    <button id="btn" onclick="resetPassword()">تغيير كلمة المرور</button>
-
-    <p id="loading" class="loading"></p>
-    <p id="message" class="message"></p>
-
-    <div class="notice">
-      ⚠️ في حال لم تقم بطلب تغيير كلمة المرور، يرجى تجاهل هذه الرسالة
-      أو التواصل مع إدارة التطبيق.
-    </div>
-
+  <div class="rules">
+    ✔ 6 أحرف على الأقل<br>
+    ✔ حرف كبير<br>
+    ✔ رقم
   </div>
 
-  <script>
-    const SUPABASE_URL = "kcxzsnrqdzgfkbvshsgu";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtjeHpzbnJxZHpnZmtidnNoc2d1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNjQwNTMsImV4cCI6MjA4ODg0MDA1M30.dx61LP2sYI2HfxClklfKYv9sJ1TYVzpJYyQ2PJSA-Gw";
+  <button id="btn">تغيير كلمة المرور</button>
 
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  <p id="message" class="message"></p>
 
-    let sessionReady = false;
+  <div class="notice">
+    ⚠️ في حال لم تقم بطلب تغيير كلمة المرور، تجاهل الرسالة.
+  </div>
 
-    // 🔥 الطريقة الأساسية
-    supabaseClient.auth.onAuthStateChange(async (event, session) => {
-      if (event === "PASSWORD_RECOVERY") {
-        sessionReady = true;
-        console.log("Session Ready via event ✅");
-      }
+</div>
+
+<script>
+  const SUPABASE_URL = "https://kcxzsnrqdzgfkbvshsgu.supabase.co";
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtjeHpzbnJxZHpnZmtidnNoc2d1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNjQwNTMsImV4cCI6MjA4ODg0MDA1M30.dx61LP2sYI2HfxClklfKYv9sJ1TYVzpJYyQ2PJSA-Gw"; // حط المفتاح هنا
+
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  let sessionReady = false;
+
+  // استخراج التوكن
+  async function handleSession() {
+    const hash = window.location.hash;
+
+    if (hash.includes("access_token")) {
+      const params = new URLSearchParams(hash.substring(1));
+
+      await supabaseClient.auth.setSession({
+        access_token: params.get("access_token"),
+        refresh_token: params.get("refresh_token"),
+      });
+
+      sessionReady = true;
+    }
+  }
+
+  handleSession();
+
+  function validatePassword(password) {
+    return /^(?=.*[A-Z])(?=.*[0-9]).{6,}$/.test(password);
+  }
+
+  async function resetPassword() {
+    const password = document.getElementById("password").value;
+    const confirm = document.getElementById("confirmPassword").value;
+    const msg = document.getElementById("message");
+
+    msg.innerText = "";
+
+    if (!sessionReady) {
+      msg.innerText = "❌ الرابط غير صالح";
+      msg.className = "message error";
+      return;
+    }
+
+    if (!validatePassword(password)) {
+      msg.innerText = "❌ كلمة المرور ضعيفة";
+      msg.className = "message error";
+      return;
+    }
+
+    if (password !== confirm) {
+      msg.innerText = "❌ غير متطابقة";
+      msg.className = "message error";
+      return;
+    }
+
+    const { error } = await supabaseClient.auth.updateUser({
+      password: password
     });
 
-    // 🔥 fallback مهم جدًا
-    async function handleSessionFallback() {
-      const hash = window.location.hash;
-
-      if (hash && hash.includes("access_token")) {
-        const params = new URLSearchParams(hash.substring(1));
-
-        const access_token = params.get("access_token");
-        const refresh_token = params.get("refresh_token");
-
-        if (access_token && refresh_token) {
-          await supabaseClient.auth.setSession({
-            access_token,
-            refresh_token,
-          });
-
-          sessionReady = true;
-          console.log("Session Ready via fallback ✅");
-        }
-      }
+    if (error) {
+      msg.innerText = error.message;
+      msg.className = "message error";
+      return;
     }
 
-    handleSessionFallback();
+    msg.innerText = "✅ تم التغيير بنجاح";
+    msg.className = "message success";
+  }
 
-    function validatePassword(password) {
-      const regex = /^(?=.*[A-Z])(?=.*[0-9]).{6,}$/;
-      return regex.test(password);
-    }
-
-    async function resetPassword() {
-      const password = document.getElementById("password").value;
-      const confirmPassword = document.getElementById("confirmPassword").value;
-      const message = document.getElementById("message");
-      const loading = document.getElementById("loading");
-      const btn = document.getElementById("btn");
-
-      message.innerText = "";
-      message.className = "message";
-
-      if (!sessionReady) {
-        message.innerText = "❌ الرابط غير صالح أو انتهت صلاحيته";
-        message.classList.add("error");
-        return;
-      }
-
-      if (!validatePassword(password)) {
-        message.innerText = "❌ كلمة المرور يجب أن تحتوي على 6 أحرف + حرف كبير + رقم";
-        message.classList.add("error");
-        return;
-      }
-
-      if (password !== confirmPassword) {
-        message.innerText = "❌ كلمة المرور غير متطابقة";
-        message.classList.add("error");
-        return;
-      }
-
-      try {
-        btn.disabled = true;
-        loading.innerText = "⏳ جاري تحديث كلمة المرور...";
-
-        const { error } = await supabaseClient.auth.updateUser({
-          password: password
-        });
-
-        if (error) throw error;
-
-        loading.innerText = "";
-        message.innerText = "✅ تم تغيير كلمة المرور بنجاح";
-        message.classList.add("success");
-
-        await supabaseClient.auth.signOut();
-
-        // 🔥 تحويل للتطبيق (اختياري)
-        setTimeout(() => {
-          window.location.href = "haymarket://reset-password";
-        }, 2000);
-
-      } catch (err) {
-        loading.innerText = "";
-        message.innerText = err.message || "❌ حدث خطأ";
-        message.classList.add("error");
-        btn.disabled = false;
-        console.error(err);
-      }
-    }
-  </script>
+  // ربط الزر
+  document.getElementById("btn").addEventListener("click", resetPassword);
+</script>
 
 </body>
 </html>
