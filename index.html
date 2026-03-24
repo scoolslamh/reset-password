@@ -111,10 +111,27 @@
 
   const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  // 🔥 استخراج الكود فقط (بدون استهلاكه)
-  let resetCode = null;
-  const params = new URLSearchParams(window.location.search);
-  resetCode = params.get("code");
+  let sessionReady = false;
+
+  // ✅ الحل الصحيح (بدل exchangeCodeForSession)
+  async function init() {
+    try {
+      const { data, error } = await supabaseClient.auth.getSessionFromUrl({
+        storeSession: true
+      });
+
+      if (data?.session) {
+        sessionReady = true;
+        console.log("Session Ready ✅");
+      } else {
+        console.log("No session");
+      }
+    } catch (e) {
+      console.log("Init error", e);
+    }
+  }
+
+  init();
 
   function validatePassword(password) {
     return /^(?=.*[A-Z])(?=.*[0-9]).{6,}$/.test(password);
@@ -132,22 +149,9 @@
       btn.disabled = true;
       btn.innerText = "⏳ جاري التنفيذ...";
 
-      // ✅ تحقق من وجود الكود
-      if (!resetCode) {
-        msg.innerText = "❌ الرابط غير صالح";
-        msg.className = "message error";
-        btn.disabled = false;
-        btn.innerText = "تغيير كلمة المرور";
-        return;
-      }
-
-      // 🔥 تحويل الكود إلى session (مرة واحدة فقط)
-      const { error } = await supabaseClient.auth.exchangeCodeForSession({
-        code: resetCode
-      });
-
-      if (error) {
-        msg.innerText = "❌ الرابط منتهي أو تم استخدامه";
+      // ✅ تحقق من الجلسة
+      if (!sessionReady) {
+        msg.innerText = "❌ الرابط غير صالح أو انتهت صلاحيته";
         msg.className = "message error";
         btn.disabled = false;
         btn.innerText = "تغيير كلمة المرور";
@@ -172,11 +176,11 @@
       }
 
       // 🔥 تحديث كلمة المرور
-      const { error: updateError } = await supabaseClient.auth.updateUser({
+      const { error } = await supabaseClient.auth.updateUser({
         password: password
       });
 
-      if (updateError) throw updateError;
+      if (error) throw error;
 
       msg.innerText = "✅ تم تغيير كلمة المرور بنجاح";
       msg.className = "message success";
