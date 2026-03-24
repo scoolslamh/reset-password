@@ -112,37 +112,25 @@
   const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
   let sessionReady = false;
+  let exchanged = false;
 
   async function init() {
     try {
-      // 🔥 قراءة التوكن من الرابط (#)
-      const hash = window.location.hash;
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get("code");
 
-      if (!hash.includes("access_token")) {
-        console.log("No recovery token");
+      if (!code) {
+        console.log("No code");
         return;
       }
 
-      const params = new URLSearchParams(hash.replace("#", "?"));
-      const access_token = params.get("access_token");
-      const refresh_token = params.get("refresh_token");
+      console.log("Code found:", code);
 
-      if (access_token && refresh_token) {
-        const { error } = await supabaseClient.auth.setSession({
-          access_token,
-          refresh_token
-        });
-
-        if (!error) {
-          sessionReady = true;
-          console.log("Session Ready ✅");
-        } else {
-          console.error(error);
-        }
-      }
+      // 🔥 نؤجل التحويل (لا ننفذه هنا)
+      window.resetCode = code;
 
     } catch (e) {
-      console.error("Init error", e);
+      console.error(e);
     }
   }
 
@@ -164,12 +152,30 @@
       btn.disabled = true;
       btn.innerText = "⏳ جاري التنفيذ...";
 
-      if (!sessionReady) {
-        msg.innerText = "❌ الرابط غير صالح أو انتهت صلاحيته";
+      if (!window.resetCode) {
+        msg.innerText = "❌ الرابط غير صالح";
         msg.className = "message error";
         btn.disabled = false;
         btn.innerText = "تغيير كلمة المرور";
         return;
+      }
+
+      // 🔥 مهم جدًا: لا تنفذ إلا مرة واحدة
+      if (!exchanged) {
+        const { error } = await supabaseClient.auth.exchangeCodeForSession({
+          code: window.resetCode
+        });
+
+        if (error) {
+          msg.innerText = "❌ الرابط منتهي أو تم استخدامه";
+          msg.className = "message error";
+          btn.disabled = false;
+          btn.innerText = "تغيير كلمة المرور";
+          return;
+        }
+
+        exchanged = true;
+        sessionReady = true;
       }
 
       if (!validatePassword(password)) {
@@ -188,11 +194,11 @@
         return;
       }
 
-      const { error } = await supabaseClient.auth.updateUser({
+      const { error: updateError } = await supabaseClient.auth.updateUser({
         password: password
       });
 
-      if (error) throw error;
+      if (updateError) throw updateError;
 
       msg.innerText = "✅ تم تغيير كلمة المرور بنجاح";
       msg.className = "message success";
