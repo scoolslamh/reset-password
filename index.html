@@ -115,31 +115,36 @@
   let sessionReady = false;
 
   async function handleSession() {
-    try {
-      const url = window.location.href;
+  try {
+    const url = window.location.href;
 
-      // ✅ تأكد أن الرابط فيه code
-      if (!url.includes("code=")) {
-        console.log("No code in URL");
-        return;
-      }
-
-      const { data, error } = await supabaseClient.auth.exchangeCodeForSession(url);
-
-      if (error) {
-        console.error("Session error:", error.message);
-        return;
-      }
-
-      if (data.session) {
-        sessionReady = true;
-        console.log("Session Ready ✅");
-      }
-
-    } catch (e) {
-      console.error("Catch error:", e);
+    if (!url.includes("code=")) {
+      document.getElementById("message").innerText = "❌ الرابط غير صالح";
+      return;
     }
+
+    const { data, error } = await supabaseClient.auth.exchangeCodeForSession(url);
+
+    if (error) {
+      document.getElementById("message").innerText = "❌ الرابط منتهي أو غير صالح";
+      return;
+    }
+
+    if (data.session) {
+      sessionReady = true;
+
+      // ✅ تفعيل الزر
+      const btn = document.getElementById("btn");
+      btn.disabled = false;
+      btn.innerText = "تغيير كلمة المرور";
+
+      console.log("Session Ready ✅");
+    }
+
+  } catch (e) {
+    console.error(e);
   }
+}
 
   handleSession();
 
